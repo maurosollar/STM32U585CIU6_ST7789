@@ -1,0 +1,188 @@
+STM32U585CIU6 + ST7789
+
+Display ST7789 240x280 1.69"
+--------------------------------------------------------------
+
+MOSI  - PA7
+SCK   - PA1
+BLK   - PA0
+CS    - PA2
+DC    - PA3
+RST   - PA4
+
+
+
+STM32CubeMX
+
+Do you want to create a new project: (*) without TrustZone activated
+
+
+
+Clock Configuration
+Por enquanto Clock principal interno com 16MHz
+
+Pinout & Configuration
+Connectivity
+SPI1
+  SPI1 Mode and Configuration
+  Mode: Full-Duplex Master
+  
+Aba
+  Parameter Settings
+    Basic Parameters
+      Frame Format: Motorola
+      Data Size: 8 Bits
+      First Bit: MSB First
+  DMA Settings
+    Add
+    DMA Request: SPI1_TX
+
+Aba
+  System Core
+    RCC
+    High Speed Clock (HSE): Crystal/Ceramic Resonator
+    Low Speed Clock (LSE): Crystal/Ceramic Resonator
+
+Clock Configuration
+Input frequency: 8MHz (Veio com 25, mas a placa que tenho tem crystal de 8MHz
+Em System Clock Mux: HSE
+Mudar o HCLK: 168MHz
+Obs.: Com isto o APB2 peripheral clocks ficou com 84MHz
+      Mas em Connectivity SPI1 o prescaler dividiu por 2, o clock do SPI então 42Mbps
+ 
+ 
+Aba Project Manager
+  Project Name: F405RGT6_Display_ILI9341
+  Toolchain / IDE: STM32CubeIDE
+  
+ Instalando biblioteca primitiva:
+ https://github.com/Floyd-Fish/ST7789-STM32
+ Copiar os arquivos st7789.c e .h, fonte.c e .h para ./Core/Inc e Src
+ Alterar a pinagem no st7789.h
+ 
+main.c
+/* USER CODE BEGIN Includes */
+#include "st7789.h"
+
+/* USER CODE BEGIN 2 */
+ST7789_Init();
+HAL_Delay(100);
+HAL_GPIO_WritePin(BLK_GPIO_Port, BLK_Pin, 1);
+ST7789_Test();
+
+
+  
+  
+
+  
+  
+  
+  
+  
+https://github.com/lvgl/lvgl/tree/release/v9.1
+Baixar o ZIP
+renomear o diretório descompactado para lvgl
+Ir no STM32CubeIDE
+Botão direto no nome do projeto
+Show in
+  System Explorer
+  Vai mostrar os projetos
+  Entre no diretório F405RGT6_Display_IL9341/Drivers
+  e copie o "lvgl" para este diretório
+  Entre no Diretório "lvgl" e copie lv_conf_template.h para o diretório anterior "Drivers"
+  renomeie para lv_conf.h
+
+  Apague a pasta ./Drivers/lvgl/tests e zephyr
+  Ir para a pasta /drivers/lvgl/examples/porting
+  copiar lv_port_disp_template.c e .h para ./Core/src e ./Core/inc como lv_port_disp.c e .h
+  
+  No topo do main.c
+  #include "lv_port_disp.h"
+
+
+Depois vá em:
+Project
+  Properties
+    C/C++ Build
+      Settings
+        MCU/MPU GCC Compiler
+          Include paths
+          Add e adiciona a pasta: lvgl Ficou assim: ${workspace_loc:/${ProjName}/Drivers/lvgl}
+          
+No Project Explorer
+  F405RGT6_Display_IL9341
+    Drivers
+      lv_conf.h
+Altere:
+#if 1 /*Set it to "1" to enable content*/ (Estava zero, passei para 1)
+
+Exclua tests do build:
+No STM32CubeIDE:
+
+Clique com botão direito em:
+
+Drivers/lvgl/tests
+→ Resource Configurations
+→ Exclude from Build
+Marque todas as configurações (Debug/Release)
+
+lv_config.h
+
+
+
+Dicas:
+USER CODE BEGIN PV (variáveis globais)
+USER CODE BEGIN PFP (Protótipo de funções)
+USER CODE BEGIN 0 (Código auxiliar antes do main)
+USER CODE BEGIN 1 (Antes do HAL_Init())
+USER CODE BEGIN Init (Antes do Clock)
+USER CODE BEGIN SysInit (Depois do Clock)
+USER CODE BEGIN 2 (Aqui inicializa TUDO) O que a gente utiliza mais
+USER CODE BEGIN WHILE (Loop principal)
+USER CODE BEGIN 3 (Parte final do loop)
+USER CODE BEGIN SPI1_Init 0 / 1 / 2 (Antes de configurar SPI)
+USER CODE BEGIN MX_GPIO_Init_1 (Antes de configurar os pinos)
+USER CODE BEGIN MX_GPIO_Init_2 (Depois de configurar GPIO)
+USER CODE BEGIN 4 (OUTRO MAIS IMPORTANTE) Aqui as funções que criamos
+USER CODE BEGIN Error_Handler_Debug (Só para debug)
+USER CODE BEGIN 6 (Para assert (debug avançado))
+
+
+
+
+Funções da biblioteca st7789
+
+void ST7789_Init(void);  ST7789_Init(); 
+void ST7789_SetRotation(uint8_t m); valores típicos 0–3 (0 = normal, 1 = 90°, 2 = 180°, 3 = 270°)
+void ST7789_Fill_Color(uint16_t color); Tela toda de uma cor
+void ST7789_DrawPixel(uint16_t x, uint16_t y, uint16_t color);
+void ST7789_Fill(uint16_t xSta, uint16_t ySta, uint16_t xEnd, uint16_t yEnd, uint16_t color); 
+void ST7789_DrawPixel_4px(uint16_t x, uint16_t y, uint16_t color); *** x,y,cor 
+
+/* Graphical functions. */
+void ST7789_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+void ST7789_DrawRectangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+void ST7789_DrawCircle(uint16_t x0, uint16_t y0, uint8_t r, uint16_t color);
+void ST7789_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t *data);
+void ST7789_InvertColors(uint8_t invert);
+
+/* Text functions. */
+void ST7789_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor);
+void ST7789_WriteString(uint16_t x, uint16_t y, const char *str, FontDef font, uint16_t color, uint16_t bgcolor);
+
+/* Extented Graphical functions. */
+void ST7789_DrawFilledRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
+void ST7789_DrawTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color);
+void ST7789_DrawFilledTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color);
+void ST7789_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
+
+
+
+
+	//HAL_GPIO_WritePin(TEMPO_GPIO_Port, TEMPO_Pin, 1); // Só para ver no osciloscópio
+	//ST7789_ClearArea(0, 0, 279, 239, BLUE);
+	//ST7789_Fill_Color(BLUE);
+	//HAL_GPIO_WritePin(TEMPO_GPIO_Port, TEMPO_Pin, 0); // Só para ver no osciloscópio
+	//ST7789_ClearArea(0, 0, 279, 239, GREEN);
+	//ST7789_Fill_Color(GREEN);
+	//Spectrogram_SimulatedTest();
