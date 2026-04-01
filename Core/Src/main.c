@@ -55,6 +55,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_GPDMA1_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_ICACHE_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -95,6 +96,7 @@ int main(void)
   MX_GPIO_Init();
   MX_GPDMA1_Init();
   MX_SPI1_Init();
+  MX_ICACHE_Init();
   /* USER CODE BEGIN 2 */
   ST7789_Init();
   HAL_Delay(100);
@@ -104,32 +106,35 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 #define PI 3.14159265
-uint16_t amplitude = 50;     // altura da onda em pixels
-uint16_t y_offset = 60;     // deslocamento vertical (meio da tela)
-float frequency = 2.0f;      // número de ciclos na tela
+  uint16_t amplitude = 50;     // altura da onda em pixels
+  uint16_t y_offset = 60;     // deslocamento vertical (meio da tela)
+  float frequency = 2.0f;      // número de ciclos na tela
 
-for (uint16_t y2 = 0; y2 < 150; y2 += 10) {
-for (uint16_t x = 0; x < ST7789_WIDTH; x++) {
-    // calcular seno: -1 a 1
-    float angle = 2.0f * PI * frequency * x / ST7789_WIDTH;
-    int16_t y = (int16_t)(amplitude * sinf(angle) + y_offset + y2);
+  for (uint16_t y2 = 0; y2 < 150; y2 += 10) {
+    for (uint16_t x = 0; x < ST7789_WIDTH; x++) {
+        // calcular seno: -1 a 1
+        float angle = 2.0f * PI * frequency * x / ST7789_WIDTH;
+        int16_t y = (int16_t)(amplitude * sinf(angle) + y_offset + y2);
 
-    // plotar pixel
-    ST7789_DrawPixel(x, y, WHITE);
-    //HAL_Delay(10);
-}
-}
-HAL_Delay(1000);
-ST7789_ClearArea(0, 160, 279, 239, WHITE);
+        // plotar pixel
+        ST7789_DrawPixel(x, y, WHITE);
+        //HAL_Delay(10);
+    }
+  }
+  HAL_Delay(1000);
+
   while (1)
   {
 		//HAL_GPIO_WritePin(TEMPO_GPIO_Port, TEMPO_Pin, 1);
-		ST7789_WriteString(10, 50, "Hello World!", Font_7x10, RED, WHITE);
+		ST7789_Fill_Color(WHITE);
+		ST7789_DrawImage(10, 100, 128, 128, (uint16_t *)saber);
+		HAL_Delay(500);
+		ST7789_Fill_Color(WHITE);
+		ST7789_DrawImage(20, 0, 240, 240, (uint16_t *)knky);
 		HAL_Delay(3000);
+		ST7789_Fill_Color(WHITE);
 		ST7789_Test();
-		ST7789_WriteString(10, 50, "Hello World!", Font_7x10, RED, WHITE);
-		HAL_Delay(3000);
-		  //ST7789_Fill_Color(BLUE);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -216,6 +221,38 @@ static void MX_GPDMA1_Init(void)
   /* USER CODE BEGIN GPDMA1_Init 2 */
 
   /* USER CODE END GPDMA1_Init 2 */
+
+}
+
+/**
+  * @brief ICACHE Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ICACHE_Init(void)
+{
+
+  /* USER CODE BEGIN ICACHE_Init 0 */
+
+  /* USER CODE END ICACHE_Init 0 */
+
+  /* USER CODE BEGIN ICACHE_Init 1 */
+
+  /* USER CODE END ICACHE_Init 1 */
+
+  /** Enable instruction cache in 1-way (direct mapped cache)
+  */
+  if (HAL_ICACHE_ConfigAssociativityMode(ICACHE_1WAY) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_ICACHE_Enable() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ICACHE_Init 2 */
+
+  /* USER CODE END ICACHE_Init 2 */
 
 }
 

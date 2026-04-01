@@ -8,7 +8,7 @@ uint16_t DMA_MIN_SIZE = 16;
  * And if your MCU have enough RAM(even larger than full-frame size),
  * Then you can specify the framebuffer size to the full resolution below.
  */
- #define HOR_LEN 	5	//	Also mind the resolution of your screen!
+#define HOR_LEN 	40	//	Also mind the resolution of your screen!
 uint16_t disp_buf[ST7789_WIDTH * HOR_LEN];
 #endif
 
@@ -36,28 +36,34 @@ static void ST7789_WriteData(uint8_t *buff, size_t buff_size)
     ST7789_Select();
     ST7789_DC_Set();
 
-    while (buff_size > 0) {
-        uint16_t chunk_size = buff_size > 65535 ? 65535 : buff_size;
+    // Desabilita SPI para reconfigurar
+    CLEAR_BIT(ST7789_SPI_PORT.Instance->CR1, SPI_CR1_SPE);
 
-        #ifdef USE_DMA
-            if (DMA_MIN_SIZE <= buff_size)
-            {
-                HAL_SPI_Transmit_DMA(&ST7789_SPI_PORT, buff, chunk_size);
+    // TSIZE = 0 → modo unlimited (sem EOT automático no meio da transferência)
+    ST7789_SPI_PORT.Instance->CR2 = 0;
 
-                // CORRETO para STM32U5 — aguarda pelo estado do SPI,
-                // não pelo DMA diretamente
-                while (HAL_SPI_GetState(&ST7789_SPI_PORT) != HAL_SPI_STATE_READY)
-                {}
-            }
-            else
-                HAL_SPI_Transmit(&ST7789_SPI_PORT, buff, chunk_size, HAL_MAX_DELAY);
-        #else
-            HAL_SPI_Transmit(&ST7789_SPI_PORT, buff, chunk_size, HAL_MAX_DELAY);
-        #endif
+    // Habilita e inicia
+    SET_BIT(ST7789_SPI_PORT.Instance->CR1, SPI_CR1_SPE);
+    SET_BIT(ST7789_SPI_PORT.Instance->CR1, SPI_CR1_CSTART);
 
-        buff += chunk_size;
-        buff_size -= chunk_size;
+    for (size_t i = 0; i < buff_size; i++)
+    {
+        // Aguarda espaço no TX FIFO
+        while (!(ST7789_SPI_PORT.Instance->SR & SPI_SR_TXP));
+        *(__IO uint8_t *)&ST7789_SPI_PORT.Instance->TXDR = buff[i];
     }
+
+    // Aguarda o último byte sair completamente
+    while (!(ST7789_SPI_PORT.Instance->SR & SPI_SR_TXC));
+
+    // Encerra a transação manualmente
+    SET_BIT(ST7789_SPI_PORT.Instance->CR1, SPI_CR1_CSUSP);
+    while (ST7789_SPI_PORT.Instance->SR & SPI_SR_SUSP);
+
+    CLEAR_BIT(ST7789_SPI_PORT.Instance->CR1, SPI_CR1_SPE);
+
+    // Limpa todas as flags
+    ST7789_SPI_PORT.Instance->IFCR = 0xFFFFFFFF;
 
     ST7789_UnSelect();
 }
@@ -107,7 +113,6 @@ void ST7789_SetRotation(uint8_t m)
  */
 static void ST7789_SetAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 {
-	ST7789_Select();
 	uint16_t x_start = x0 + X_SHIFT, x_end = x1 + X_SHIFT;
 	uint16_t y_start = y0 + Y_SHIFT, y_end = y1 + Y_SHIFT;
 	
@@ -126,7 +131,6 @@ static void ST7789_SetAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint1
 	}
 	/* Write to RAM */
 	ST7789_WriteCommand(ST7789_RAMWR);
-	ST7789_UnSelect();
 }
 
 /**
@@ -198,7 +202,6 @@ void ST7789_Init(void)
 void ST7789_Fill_Color(uint16_t color)
 {
     ST7789_SetAddressWindow(0, 0, ST7789_WIDTH - 1, ST7789_HEIGHT - 1);
-    ST7789_Select();
 
 #ifdef USE_DMA
     for (uint16_t i = 0; i < ST7789_WIDTH * HOR_LEN; i++)
@@ -220,7 +223,6 @@ void ST7789_Fill_Color(uint16_t color)
             ST7789_WriteData(data, sizeof(data));
         }
 #endif
-    ST7789_UnSelect();
 }
 
 
@@ -235,39 +237,12 @@ void ST7789_Fill_Color(uint16_t color)
 void ST7789_DrawPixel(uint16_t x, uint16_t y, uint16_t color)
 {
 	if ((x < 0) || (x >= ST7789_WIDTH) ||
-		 (y < 0) || (y >= ST7789_HEIGHT))	return;
+	   (y < 0) || (y >= ST7789_HEIGHT))	return;
 	
 	ST7789_SetAddressWindow(x, y, x, y);
 	uint8_t data[] = {color >> 8, color & 0xFF};
-	ST7789_Select();
 	ST7789_WriteData(data, sizeof(data));
-	ST7789_UnSelect();
 }
-
-/**
- * @brief Fill an Area with single color
- * @param xSta&ySta -> coordinate of the start point
- * @param xEnd&yEnd -> coordinate of the end point
- * @param color -> color to Fill with
- * @return none
- */
-// Very slow, not use. Bellow ST7789_ClearArea
-/*
-void ST7789_Fill(uint16_t xSta, uint16_t ySta, uint16_t xEnd, uint16_t yEnd, uint16_t color)
-{
-	if ((xEnd < 0) || (xEnd >= ST7789_WIDTH) ||
-		 (yEnd < 0) || (yEnd >= ST7789_HEIGHT))	return;
-	ST7789_Select();
-	uint16_t i, j;
-	ST7789_SetAddressWindow(xSta, ySta, xEnd, yEnd);
-	for (i = ySta; i <= yEnd; i++)
-		for (j = xSta; j <= xEnd; j++) {
-			uint8_t data[] = {color >> 8, color & 0xFF};
-			ST7789_WriteData(data, sizeof(data));
-		}
-	ST7789_UnSelect();
-}
-*/
 
 void ST7789_ClearArea(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
@@ -318,9 +293,8 @@ void ST7789_DrawPixel_4px(uint16_t x, uint16_t y, uint16_t color)
 {
 	if ((x <= 0) || (x > ST7789_WIDTH) ||
 		 (y <= 0) || (y > ST7789_HEIGHT))	return;
-	ST7789_Select();
-	ST7789_Fill(x - 1, y - 1, x + 1, y + 1, color);
-	ST7789_UnSelect();
+
+	ST7789_ClearArea(x - 1, y - 1, x + 1, y + 1, color);
 }
 
 /**
@@ -461,10 +435,8 @@ void ST7789_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint
 	if ((y + h - 1) >= ST7789_HEIGHT)
 		return;
 
-	ST7789_Select();
 	ST7789_SetAddressWindow(x, y, x + w - 1, y + h - 1);
 	ST7789_WriteData((uint8_t *)data, sizeof(uint16_t) * w * h);
-	ST7789_UnSelect();
 }
 
 /**
@@ -474,9 +446,7 @@ void ST7789_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint
  */
 void ST7789_InvertColors(uint8_t invert)
 {
-	ST7789_Select();
 	ST7789_WriteCommand(invert ? 0x21 /* INVON */ : 0x20 /* INVOFF */);
-	ST7789_UnSelect();
 }
 
 /** 
@@ -491,7 +461,6 @@ void ST7789_InvertColors(uint8_t invert)
 void ST7789_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t color, uint16_t bgcolor)
 {
 	uint32_t i, b, j;
-	ST7789_Select();
 	ST7789_SetAddressWindow(x, y, x + font.width - 1, y + font.height - 1);
 
 	for (i = 0; i < font.height; i++) {
@@ -507,7 +476,6 @@ void ST7789_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t co
 			}
 		}
 	}
-	ST7789_UnSelect();
 }
 
 /** 
@@ -521,7 +489,6 @@ void ST7789_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t co
  */
 void ST7789_WriteString(uint16_t x, uint16_t y, const char *str, FontDef font, uint16_t color, uint16_t bgcolor)
 {
-	ST7789_Select();
 	while (*str) {
 		if (x + font.width >= ST7789_WIDTH) {
 			x = 0;
@@ -540,7 +507,6 @@ void ST7789_WriteString(uint16_t x, uint16_t y, const char *str, FontDef font, u
 		x += font.width;
 		str++;
 	}
-	ST7789_UnSelect();
 }
 
 /** 
@@ -552,7 +518,6 @@ void ST7789_WriteString(uint16_t x, uint16_t y, const char *str, FontDef font, u
  */
 void ST7789_DrawFilledRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color)
 {
-	ST7789_Select();
 	uint8_t i;
 
 	/* Check input parameters */
@@ -575,7 +540,6 @@ void ST7789_DrawFilledRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
 		/* Draw lines */
 		ST7789_DrawLine(x, y + i, x + w, y + i, color);
 	}
-	ST7789_UnSelect();
 }
 
 /** 
@@ -586,12 +550,10 @@ void ST7789_DrawFilledRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
  */
 void ST7789_DrawTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color)
 {
-	ST7789_Select();
 	/* Draw lines */
 	ST7789_DrawLine(x1, y1, x2, y2, color);
 	ST7789_DrawLine(x2, y2, x3, y3, color);
 	ST7789_DrawLine(x3, y3, x1, y1, color);
-	ST7789_UnSelect();
 }
 
 /** 
@@ -602,7 +564,6 @@ void ST7789_DrawTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
  */
 void ST7789_DrawFilledTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color)
 {
-	ST7789_Select();
 	int16_t deltax = 0, deltay = 0, x = 0, y = 0, xinc1 = 0, xinc2 = 0,
 			yinc1 = 0, yinc2 = 0, den = 0, num = 0, numadd = 0, numpixels = 0,
 			curpixel = 0;
@@ -659,7 +620,6 @@ void ST7789_DrawFilledTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y
 		x += xinc2;
 		y += yinc2;
 	}
-	ST7789_UnSelect();
 }
 
 /** 
@@ -671,7 +631,6 @@ void ST7789_DrawFilledTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y
  */
 void ST7789_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color)
 {
-	ST7789_Select();
 	int16_t f = 1 - r;
 	int16_t ddF_x = 1;
 	int16_t ddF_y = -2 * r;
@@ -700,7 +659,6 @@ void ST7789_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color)
 		ST7789_DrawLine(x0 + y, y0 + x, x0 - y, y0 + x, color);
 		ST7789_DrawLine(x0 + y, y0 - x, x0 - y, y0 - x, color);
 	}
-	ST7789_UnSelect();
 }
 
 
@@ -711,9 +669,7 @@ void ST7789_DrawFilledCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color)
  */
 void ST7789_TearEffect(uint8_t tear)
 {
-	ST7789_Select();
 	ST7789_WriteCommand(tear ? 0x35 /* TEON */ : 0x34 /* TEOFF */);
-	ST7789_UnSelect();
 }
 
 
@@ -724,6 +680,7 @@ void ST7789_TearEffect(uint8_t tear)
  */
 void ST7789_Test(void)
 {
+
 	ST7789_Fill_Color(WHITE);
 	HAL_Delay(1000);
 	ST7789_WriteString(10, 20, "Speed Test", Font_11x18, RED, WHITE);
