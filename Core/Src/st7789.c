@@ -115,9 +115,9 @@ static void ST7789_SetAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint1
 {
 	uint16_t x_start = x0 + X_SHIFT, x_end = x1 + X_SHIFT;
 	uint16_t y_start = y0 + Y_SHIFT, y_end = y1 + Y_SHIFT;
-	
+
 	/* Column Address set */
-	ST7789_WriteCommand(ST7789_CASET); 
+	ST7789_WriteCommand(ST7789_CASET);
 	{
 		uint8_t data[] = {x_start >> 8, x_start & 0xFF, x_end >> 8, x_end & 0xFF};
 		ST7789_WriteData(data, sizeof(data));
@@ -157,13 +157,13 @@ void ST7789_Init(void)
 		ST7789_WriteData(data, sizeof(data));
 	}
 	ST7789_SetRotation(ST7789_ROTATION);	//	MADCTL (Display Rotation)
-	
+
 	/* Internal LCD Voltage generator settings */
     ST7789_WriteCommand(0XB7);				//	Gate Control
     ST7789_WriteSmallData(0x35);			//	Default value
     ST7789_WriteCommand(0xBB);				//	VCOM setting
     ST7789_WriteSmallData(0x19);			//	0.725v (default 0.75v for 0x20)
-    ST7789_WriteCommand(0xC0);				//	LCMCTRL	
+    ST7789_WriteCommand(0xC0);				//	LCMCTRL
     ST7789_WriteSmallData (0x2C);			//	Default value
     ST7789_WriteCommand (0xC2);				//	VDV and VRH command Enable
     ST7789_WriteSmallData (0x01);			//	Default value
@@ -192,7 +192,7 @@ void ST7789_Init(void)
     ST7789_WriteCommand (ST7789_INVON);		//	Inversion ON
 	ST7789_WriteCommand (ST7789_SLPOUT);	//	Out of sleep mode
   	ST7789_WriteCommand (ST7789_NORON);		//	Normal Display on
-  	ST7789_WriteCommand (ST7789_DISPON);	//	Main screen turned on	
+  	ST7789_WriteCommand (ST7789_DISPON);	//	Main screen turned on
 
 	HAL_Delay(50);
 	ST7789_Fill_Color(BLACK);				//	Fill with Black.
@@ -238,7 +238,7 @@ void ST7789_DrawPixel(uint16_t x, uint16_t y, uint16_t color)
 {
 	if ((x < 0) || (x >= ST7789_WIDTH) ||
 	   (y < 0) || (y >= ST7789_HEIGHT))	return;
-	
+
 	ST7789_SetAddressWindow(x, y, x, y);
 	uint8_t data[] = {color >> 8, color & 0xFF};
 	ST7789_WriteData(data, sizeof(data));
@@ -375,7 +375,7 @@ void ST7789_DrawRectangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, ui
 	ST7789_UnSelect();
 }
 
-/** 
+/**
  * @brief Draw a circle with single color
  * @param x0&y0 -> coordinate of circle center
  * @param r -> radius of circle
@@ -449,7 +449,7 @@ void ST7789_InvertColors(uint8_t invert)
 	ST7789_WriteCommand(invert ? 0x21 /* INVON */ : 0x20 /* INVOFF */);
 }
 
-/** 
+/**
  * @brief Write a char
  * @param  x&y -> cursor of the start point.
  * @param ch -> char to write
@@ -478,8 +478,8 @@ void ST7789_WriteChar(uint16_t x, uint16_t y, char ch, FontDef font, uint16_t co
 	}
 }
 
-/** 
- * @brief Write a string 
+/**
+ * @brief Write a string
  * @param  x&y -> cursor of the start point.
  * @param str -> string to write
  * @param font -> fontstyle of the string
@@ -509,7 +509,7 @@ void ST7789_WriteString(uint16_t x, uint16_t y, const char *str, FontDef font, u
 	}
 }
 
-/** 
+/**
  * @brief Draw a filled Rectangle with single color
  * @param  x&y -> coordinates of the starting point
  * @param w&h -> width & height of the Rectangle
@@ -542,7 +542,7 @@ void ST7789_DrawFilledRectangle(uint16_t x, uint16_t y, uint16_t w, uint16_t h, 
 	}
 }
 
-/** 
+/**
  * @brief Draw a Triangle with single color
  * @param  xi&yi -> 3 coordinates of 3 top points.
  * @param color ->color of the lines
@@ -556,7 +556,7 @@ void ST7789_DrawTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uin
 	ST7789_DrawLine(x3, y3, x1, y1, color);
 }
 
-/** 
+/**
  * @brief Draw a filled Triangle with single color
  * @param  xi&yi -> 3 coordinates of 3 top points.
  * @param color ->color of the triangle
@@ -622,7 +622,7 @@ void ST7789_DrawFilledTriangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y
 	}
 }
 
-/** 
+/**
  * @brief Draw a Filled circle with single color
  * @param x0&y0 -> coordinate of circle center
  * @param r -> radius of circle
@@ -673,7 +673,7 @@ void ST7789_TearEffect(uint8_t tear)
 }
 
 
-/** 
+/**
  * @brief A Simple test function for ST7789
  * @param  none
  * @return  none
