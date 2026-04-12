@@ -33,10 +33,29 @@ Aba
       Frame Format: Motorola
       Data Size: 8 Bits
       First Bit: MSB First
-  DMA Settings
-    Add
-    DMA Request: SPI1_TX
-
+  System Core GPDMA1 Mode and Configuration  (ATENÇÃO - apesar de configurado o
+                                              controlador não esta utilizando)
+    Mode
+      Channel 0 - 2 Words internal FIFO = Standard Request Mode
+    Configuration
+      Request Configuration 
+        Request = SPI1_TX
+        DMA Handle in IP Structure = hdmatx
+      Channel configuration
+        Priority = low
+        Transaction Mode = Normal
+        Direction = Memory to Peripheral
+      Source Data Setting
+        Source Address increment After Transfer = Enabled
+        Data Width = Byte
+        Burst length = 1
+        Allocated Port for Transfer = Port 0
+      Destination Data Setting
+        Destination Address increment After Transfer = Disable
+        Data Width = Byte
+        Burst Length = 1
+        Allocated Port for Transfer  = Port 0
+        
 Aba
   System Core
     RCC

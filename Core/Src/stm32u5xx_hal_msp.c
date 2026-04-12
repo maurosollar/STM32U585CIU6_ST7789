@@ -122,7 +122,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     handle_GPDMA1_Channel0.Instance = GPDMA1_Channel0;
     handle_GPDMA1_Channel0.Init.Request = GPDMA1_REQUEST_SPI1_TX;
     handle_GPDMA1_Channel0.Init.BlkHWRequest = DMA_BREQ_SINGLE_BURST;
-    handle_GPDMA1_Channel0.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    handle_GPDMA1_Channel0.Init.Direction = DMA_MEMORY_TO_PERIPH;
     handle_GPDMA1_Channel0.Init.SrcInc = DMA_SINC_INCREMENTED;
     handle_GPDMA1_Channel0.Init.DestInc = DMA_DINC_FIXED;
     handle_GPDMA1_Channel0.Init.SrcDataWidth = DMA_SRC_DATAWIDTH_BYTE;
